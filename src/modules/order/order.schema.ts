@@ -23,7 +23,7 @@ export class Order {
     ],
     required: true,
   })
-  product: {
+  products: {
     productId: string;
     count: number;
   }[];

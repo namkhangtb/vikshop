@@ -6,7 +6,7 @@ export class UpdateOrderDto {
   name?: string;
   phoneNumber?: string;
   email?: string;
-  product?: ProductItem[];
+  products?: ProductItem[];
   totalAmount?: number;
   createdAt?: Date;
   updatedAt?: Date;
