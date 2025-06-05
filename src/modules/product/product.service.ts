@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from './product.schema';
 import { Model } from 'mongoose';
 import { CreateProductDto, UpdateProductDto } from './types';
-import * as path from 'path';
 
 @Injectable()
 export class ProductService {
@@ -33,13 +32,6 @@ export class ProductService {
       createProductDto.productId = await this.generateNextCode();
     }
 
-    const nameImages = createProductDto.images.map((url: string) => {
-      const filename = path.basename(url);
-      return `/uploads/${filename}`;
-    });
-
-    createProductDto.images = nameImages;
-
     return await new this.model({
       ...createProductDto,
       createdAt: new Date(),
@@ -51,14 +43,6 @@ export class ProductService {
     id: string,
     updateProductDto: UpdateProductDto,
   ): Promise<Product> {
-    if (updateProductDto.images && Array.isArray(updateProductDto.images)) {
-      const nameImages = updateProductDto.images.map((url: string) => {
-        const filename = path.basename(url);
-        return `/uploads/${filename}`;
-      });
-      updateProductDto.images = nameImages;
-    }
-
     return await this.model
       .findByIdAndUpdate(
         id,
