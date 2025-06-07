@@ -2,7 +2,12 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from './product.schema';
 import { Model } from 'mongoose';
-import { CreateProductDto, UpdateProductDto } from './types';
+import {
+  CreateProductDto,
+  FindProductQueryParam,
+  UpdateProductDto,
+} from './types';
+import { ApiPaginateResponse } from '../common/http/types';
 
 @Injectable()
 export class ProductService {
@@ -10,8 +15,78 @@ export class ProductService {
     @InjectModel(Product.name) private readonly model: Model<ProductDocument>,
   ) {}
 
-  async findAll(): Promise<Product[]> {
-    return await this.model.find().exec();
+  async findAll(
+    param: FindProductQueryParam,
+  ): Promise<ApiPaginateResponse<Product>> {
+    let page = Number(param.page) > 0 ? Number(param.page) : 1;
+    let limit = Number(param.limit);
+    let skip = 0;
+    if (limit <= 0) {
+      limit = 0;
+      page = 1;
+    } else {
+      limit = limit > 0 ? limit : 10;
+      skip = (page - 1) * limit;
+    }
+
+    const filter: any = {};
+    if (param.productId) {
+      filter.productId = { $regex: param.productId, $options: 'i' };
+    }
+    if (param.name) {
+      filter.name = { $regex: param.name, $options: 'i' };
+    }
+    if (param.retailPrice) {
+      filter.retailPrice = param.retailPrice;
+    }
+    if (param.importPrice) {
+      filter.importPrice = param.importPrice;
+    }
+    if (param.wholesalePrice) {
+      filter.wholesalePrice = param.wholesalePrice;
+    }
+    if (param.livestreamPrice) {
+      filter.livestreamPrice = param.livestreamPrice;
+    }
+    if (param.marketPrice) {
+      filter.marketPrice = param.marketPrice;
+    }
+    if (param.upsalePrice) {
+      filter.upsalePrice = param.upsalePrice;
+    }
+    if (param.barcode) {
+      filter.barcode = { $regex: param.barcode, $options: 'i' };
+    }
+    if (param.weight) {
+      filter.weight = param.weight;
+    }
+    if (param.stock) {
+      filter.stock = param.stock;
+    }
+
+    const data = await this.model
+      .find(filter)
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 })
+      .exec();
+    const totalItems = await this.model.countDocuments(filter).exec();
+
+    const itemCount = data.length;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      data,
+      meta: {
+        pagination: {
+          itemCount,
+          totalItems,
+          itemsPerPage: limit <= 0 ? totalItems : limit,
+          totalPages: limit <= 0 ? 1 : totalPages,
+          currentPage: page,
+        },
+      },
+    };
   }
 
   async findOne(id: string): Promise<Product> {

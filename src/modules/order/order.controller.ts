@@ -6,16 +6,17 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { CreateOrderDto, UpdateOrderDto } from './types';
+import { CreateOrderDto, FindOrderQueryParam, UpdateOrderDto } from './types';
 
 @Controller('order')
 export class OrderController {
   constructor(private readonly service: OrderService) {}
   @Get()
-  async index() {
-    return await this.service.findAll();
+  async index(@Query() param: FindOrderQueryParam) {
+    return await this.service.findAll(param);
   }
 
   @Get(':id')

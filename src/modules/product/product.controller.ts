@@ -6,17 +6,22 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
-import { CreateProductDto, UpdateProductDto } from './types';
+import {
+  CreateProductDto,
+  FindProductQueryParam,
+  UpdateProductDto,
+} from './types';
 
 @Controller('product')
 export class ProductController {
   constructor(private readonly service: ProductService) {}
 
   @Get()
-  async index() {
-    return await this.service.findAll();
+  async index(@Query() param: FindProductQueryParam) {
+    return await this.service.findAll(param);
   }
 
   @Get(':id')

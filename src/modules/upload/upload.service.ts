@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { File as MulterFile } from 'multer';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Cron } from '@nestjs/schedule';
 import { ProductService } from '../product/product.service';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class UploadService {
@@ -29,8 +29,13 @@ export class UploadService {
   @Cron('0 0 * * *')
   async handleImageCleanup() {
     try {
-      const products = await this.productService.findAll();
-      const usedImages = new Set(products.flatMap((product) => product.images));
+      const products = await this.productService.findAll({
+        limit: -1,
+      });
+      const usedImages = new Set(
+        products.data.flatMap((product) => product.images || []),
+      );
+
       const allFiles = fs.readdirSync('./uploads');
       const trashFiles = allFiles.filter((file) => !usedImages.has(file));
       trashFiles.forEach((file) => {
