@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from './order.schema';
 import { Model } from 'mongoose';
-import { CreateOrderDto, FindOrderQueryParam, UpdateOrderDto } from './types';
-import { ApiPaginateResponse } from '../common/http/types';
+import { CreateOrderDto, UpdateOrderDto } from './types';
+import { ApiPaginateResponse, FindManyQueryParam } from '../common/http/types';
 
 @Injectable()
 export class OrderService {
@@ -12,7 +12,7 @@ export class OrderService {
   ) {}
 
   async findAll(
-    param: FindOrderQueryParam,
+    param: FindManyQueryParam,
   ): Promise<ApiPaginateResponse<Order>> {
     let page = Number(param.page) > 0 ? Number(param.page) : 1;
     let limit = Number(param.limit);
@@ -26,14 +26,8 @@ export class OrderService {
     }
 
     const filter: any = {};
-    if (param.name) {
-      filter.name = { $regex: param.name, $options: 'i' };
-    }
-    if (param.phoneNumber) {
-      filter.phoneNumber = { $regex: param.phoneNumber, $options: 'i' };
-    }
-    if (param.email) {
-      filter.email = { $regex: param.email, $options: 'i' };
+    if (param.keyword) {
+      filter.$text = { $search: param.keyword };
     }
 
     const data = await this.model

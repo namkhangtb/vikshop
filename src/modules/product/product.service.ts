@@ -2,12 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from './product.schema';
 import { Model } from 'mongoose';
-import {
-  CreateProductDto,
-  FindProductQueryParam,
-  UpdateProductDto,
-} from './types';
-import { ApiPaginateResponse } from '../common/http/types';
+import { CreateProductDto, UpdateProductDto } from './types';
+import { ApiPaginateResponse, FindManyQueryParam } from '../common/http/types';
 
 @Injectable()
 export class ProductService {
@@ -16,7 +12,7 @@ export class ProductService {
   ) {}
 
   async findAll(
-    param: FindProductQueryParam,
+    param: FindManyQueryParam,
   ): Promise<ApiPaginateResponse<Product>> {
     let page = Number(param.page) > 0 ? Number(param.page) : 1;
     let limit = Number(param.limit);
@@ -30,38 +26,8 @@ export class ProductService {
     }
 
     const filter: any = {};
-    if (param.productId) {
-      filter.productId = { $regex: param.productId, $options: 'i' };
-    }
-    if (param.name) {
-      filter.name = { $regex: param.name, $options: 'i' };
-    }
-    if (param.retailPrice) {
-      filter.retailPrice = param.retailPrice;
-    }
-    if (param.importPrice) {
-      filter.importPrice = param.importPrice;
-    }
-    if (param.wholesalePrice) {
-      filter.wholesalePrice = param.wholesalePrice;
-    }
-    if (param.livestreamPrice) {
-      filter.livestreamPrice = param.livestreamPrice;
-    }
-    if (param.marketPrice) {
-      filter.marketPrice = param.marketPrice;
-    }
-    if (param.upsalePrice) {
-      filter.upsalePrice = param.upsalePrice;
-    }
-    if (param.barcode) {
-      filter.barcode = { $regex: param.barcode, $options: 'i' };
-    }
-    if (param.weight) {
-      filter.weight = param.weight;
-    }
-    if (param.stock) {
-      filter.stock = param.stock;
+    if (param.keyword) {
+      filter.$text = { $search: param.keyword };
     }
 
     const data = await this.model

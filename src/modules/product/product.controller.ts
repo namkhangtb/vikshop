@@ -9,18 +9,15 @@ import {
   Query,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
-import {
-  CreateProductDto,
-  FindProductQueryParam,
-  UpdateProductDto,
-} from './types';
+import { CreateProductDto, UpdateProductDto } from './types';
+import { FindManyQueryParam } from '../common/http/types';
 
 @Controller('product')
 export class ProductController {
   constructor(private readonly service: ProductService) {}
 
   @Get()
-  async index(@Query() param: FindProductQueryParam) {
+  async index(@Query() param: FindManyQueryParam) {
     return await this.service.findAll(param);
   }
 
