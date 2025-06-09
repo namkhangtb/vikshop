@@ -1,11 +1,23 @@
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString } from 'class-validator';
 
+export type ApiItemResponse<T> = {
+  data: T;
+};
+
+export type ApiCollectionResponse<T> = {
+  data: T[];
+};
+
 export type ApiPaginateResponse<T> = {
   data: T[];
   meta: {
     pagination: IPaginationMeta;
   };
+};
+
+export type ApiSuccessResponse = {
+  data: { success: boolean };
 };
 
 export interface IPaginationMeta {
@@ -29,6 +41,11 @@ export interface IPaginationMeta {
    * the current page this paginator "points" to
    */
   currentPage: number;
+}
+
+export interface IPaginationOption {
+  page?: number;
+  limit?: number;
 }
 
 export class FindManyQueryParam {
