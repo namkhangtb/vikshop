@@ -3,61 +3,52 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from './order.schema';
 import { Model } from 'mongoose';
 import { CreateOrderDto, UpdateOrderDto } from './types';
-import { ApiPaginateResponse, FindManyQueryParam } from '../common/http/types';
+import {
+  ApiCollectionResponse,
+  ApiItemResponse,
+  ApiPaginateResponse,
+  FindManyQueryParam,
+} from '../common/http/types';
+import { ApiResponseService, BaseService } from '../common';
 
 @Injectable()
-export class OrderService {
+export class OrderService extends BaseService<Order> {
   constructor(
-    @InjectModel(Order.name) private readonly model: Model<OrderDocument>,
-  ) {}
+    @InjectModel(Order.name) model: Model<OrderDocument>,
+    response: ApiResponseService,
+  ) {
+    super(model, response);
+  }
 
   async findAll(
     param: FindManyQueryParam,
-  ): Promise<ApiPaginateResponse<Order>> {
-    let page = Number(param.page) > 0 ? Number(param.page) : 1;
-    let limit = Number(param.limit);
-    let skip = 0;
-    if (limit <= 0) {
-      limit = 0;
-      page = 1;
-    } else {
-      limit = limit > 0 ? limit : 10;
-      skip = (page - 1) * limit;
-    }
+  ): Promise<
+    | ApiCollectionResponse<Order>
+    | ApiItemResponse<Order>
+    | ApiPaginateResponse<Order>
+  > {
+    const page = Number(param.page) ?? 1;
+    const limit = Number(param.limit) ?? 10;
 
     const filter: any = {};
     const projection: any = {};
     let sort: any = { createdAt: -1 };
-
     if (param.keyword) {
       filter.$text = { $search: param.keyword };
       projection.score = { $meta: 'textScore' };
       sort = { score: { $meta: 'textScore' }, createAt: -1 };
     }
-
-    const data = await this.model
-      .find(filter, projection)
-      .skip(skip)
-      .limit(limit)
-      .sort(sort)
-      .exec();
-    const totalItems = await this.model.countDocuments(filter).exec();
-
-    const itemCount = data.length;
-    const totalPages = Math.ceil(totalItems / limit);
-
-    return {
-      data,
-      meta: {
-        pagination: {
-          itemCount,
-          totalItems,
-          itemsPerPage: limit <= 0 ? totalItems : limit,
-          totalPages: limit <= 0 ? 1 : totalPages,
-          currentPage: page,
-        },
-      },
-    };
+    const query = this.model.find(filter, projection).sort(sort);
+    if (limit < 0) {
+      const result = await query.exec();
+      return this.response.collection(result);
+    } else if (limit === 1) {
+      const result = await query.limit(1).exec();
+      return this.response.item(result);
+    } else {
+      const result = await this.pagination(query, filter, { page, limit });
+      return this.response.pagination(result);
+    }
   }
 
   async findOne(id: string): Promise<Order> {

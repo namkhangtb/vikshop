@@ -32,9 +32,16 @@ export class UploadService {
       const products = await this.productService.findAll({
         limit: -1,
       });
-      const usedImages = new Set(
-        products.data.flatMap((product) => product.images || []),
-      );
+
+      const usedImages = new Set<string>();
+      const productArray = Array.isArray(products.data)
+        ? products.data
+        : [products.data];
+      for (const product of productArray) {
+        if (Array.isArray(product.images)) {
+          product.images.forEach((img) => usedImages.add(img));
+        }
+      }
 
       const allFiles = fs.readdirSync('./uploads');
       const trashFiles = allFiles.filter((file) => !usedImages.has(file));
