@@ -26,15 +26,20 @@ export class OrderService {
     }
 
     const filter: any = {};
+    const projection: any = {};
+    let sort: any = { createdAt: -1 };
+
     if (param.keyword) {
       filter.$text = { $search: param.keyword };
+      projection.score = { $meta: 'textScore' };
+      sort = { score: { $meta: 'textScore' }, createAt: -1 };
     }
 
     const data = await this.model
-      .find(filter)
+      .find(filter, projection)
       .skip(skip)
       .limit(limit)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .exec();
     const totalItems = await this.model.countDocuments(filter).exec();
 
