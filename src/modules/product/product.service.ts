@@ -25,12 +25,12 @@ export class ProductService {
       if (param.keyword) {
         filter.$text = { $search: param.keyword };
         projection.score = { $meta: 'textScore' };
-        sort = { score: { $meta: 'textScore' }, createAt: -1 };
+        sort = { score: { $meta: 'textScore' }, createdAt: -1 };
       }
 
       const totalItems = await this.model.countDocuments(filter).exec();
       if (totalItems <= 0) {
-        this.response.base(404, 'ERROR', 'Không có sản phẩm!!!');
+        return this.response.base(404, 'ERROR', 'Không có sản phẩm!!!');
       }
 
       if (param.limit <= 0) {
@@ -123,9 +123,7 @@ export class ProductService {
     try {
       let productCode = createProductDto.productCode;
       if (productCode) {
-        const existing = await this.model.findOne({
-          productCode: productCode,
-        });
+        const existing = await this.model.findOne({ productCode });
         if (existing) {
           return this.response.base(
             400,
@@ -154,7 +152,7 @@ export class ProductService {
       return this.response.base(
         500,
         'ERROR',
-        'Lỗi hệ thống: Không thể tạo sản phẩm',
+        error.message || 'Lỗi hệ thống: Không thể tạo sản phẩm',
       );
     }
   }
@@ -179,16 +177,16 @@ export class ProductService {
       }
 
       let productCode = updateProductDto.productCode;
-      if (productCode) {
-        const product = await this.model.findById(id);
-        if (product.productCode === productCode) {
+      if (productCode && productCode !== existingProduct.productCode) {
+        const codeExists = await this.model.findOne({ productCode });
+        if (codeExists) {
           return this.response.base(
             400,
             'ERROR',
             `Mã sản phẩm ${productCode} đã tồn tại`,
           );
         }
-      } else {
+      } else if (!productCode) {
         const nextSeq = await this.counterService.getNextSequence('product');
         productCode = `SP${nextSeq}`;
       }
@@ -216,7 +214,7 @@ export class ProductService {
       return this.response.base(
         500,
         'ERROR',
-        'Lỗi hệ thống: Không thể cập nhật sản phẩm',
+        error.message || 'Lỗi hệ thống: Không thể cập nhật sản phẩm',
       );
     }
   }
@@ -232,7 +230,7 @@ export class ProductService {
       }
       const deleted = await this.model.findByIdAndDelete(id).exec();
       if (!deleted) {
-        this.response.base(
+        return this.response.base(
           404,
           'ERROR',
           `Lỗi: Không tìm thấy sản phẩm với id là ${id}`,

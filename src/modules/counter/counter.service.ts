@@ -18,6 +18,10 @@ export class CounterService {
       )
       .exec();
 
+    if (!updated) {
+      throw new Error('Lỗi: Lỗi xảy ra khi gen productCode');
+    }
+
     return updated.seq;
   }
 }

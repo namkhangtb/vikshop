@@ -30,7 +30,7 @@ export class OrderService {
 
       const totalItems = await this.model.countDocuments(filter).exec();
       if (totalItems <= 0) {
-        this.response.base(404, 'ERROR', 'Không có đơn hàng!!!');
+        return this.response.base(404, 'ERROR', 'Không có đơn hàng!!!');
       }
 
       if (param.limit <= 0) {
@@ -105,7 +105,7 @@ export class OrderService {
       }
       const result = await this.model.findById(id).exec();
       if (!result) {
-        this.response.base(
+        return this.response.base(
           404,
           'ERROR',
           `Lỗi: Không tìm thấy đơn hàng với id là ${id}`,
@@ -141,10 +141,6 @@ export class OrderService {
         createOrderDto.products,
       );
 
-      if (typeof totalAmount === 'object' && totalAmount) {
-        return totalAmount;
-      }
-
       const result = await new this.model({
         ...createOrderDto,
         totalAmount,
@@ -161,59 +157,41 @@ export class OrderService {
       return this.response.base(
         500,
         'ERROR',
-        'Lỗi hệ thống: Không thể tạo đơn hàng',
+        error.message || 'Lỗi hệ thống: Không thể tạo đơn hàng',
       );
     }
   }
 
-  private async calculateTotalAmount(products: ProductItem[]) {
+  private async calculateTotalAmount(products: ProductItem[]): Promise<number> {
     try {
       for (const item of products) {
         const { productId, count } = item;
-
         if (!productId || !Types.ObjectId.isValid(productId)) {
-          return this.response.base(
-            400,
-            'ERROR',
+          throw new Error(
             `Lỗi: ID sản phẩm không hợp lệ hoặc không được cung cấp ${productId}`,
           );
         }
-
         if (!count || count <= 0) {
-          return this.response.base(
-            400,
-            'ERROR',
-            `Lỗi: Số lượng sản phẩm tối thiểu phải là 1`,
-          );
+          throw new Error('Lỗi: Số lượng sản phẩm tối thiểu phải là 1');
         }
       }
-
       const productResults = await Promise.all(
         products.map((item) => this.productService.findOne(item.productId)),
       );
-
       let total = 0;
-
       for (let i = 0; i < productResults.length; i++) {
         const { data } = productResults[i];
-
         if (!data?.retailPrice) {
-          return this.response.base(
-            400,
-            'ERROR',
+          throw new Error(
             `Lỗi: Không tìm thấy thông tin giá bán sản phẩm với ID: ${products[i].productId}`,
           );
         }
-
         total += data.retailPrice * products[i].count;
       }
-
       return total;
     } catch (error) {
-      return this.response.base(
-        500,
-        'ERROR',
-        'Lỗi hệ thống khi tính tổng giá trị đơn hàng',
+      throw new Error(
+        error.message || 'Lỗi hệ thống khi tính tổng giá trị đơn hàng',
       );
     }
   }
@@ -227,7 +205,6 @@ export class OrderService {
           'Lỗi: ID không hợp lệ hoặc không được cung cấp',
         );
       }
-
       const existingOrder = await this.model.findById(id);
       if (!existingOrder) {
         return this.response.base(
@@ -236,7 +213,6 @@ export class OrderService {
           `Lỗi: Không tìm thấy đơn hàng với id là ${id}`,
         );
       }
-
       if (!updateOrderDto.products || updateOrderDto.products.length < 1) {
         return this.response.base(
           400,
@@ -244,36 +220,26 @@ export class OrderService {
           'Lỗi: Đơn hàng phải có ít nhất 1 sản phẩm',
         );
       }
-
       const totalAmount = await this.calculateTotalAmount(
         updateOrderDto.products,
       );
-
-      if (typeof totalAmount === 'object' && totalAmount) {
-        return totalAmount;
-      }
-
-      const reuslt = await this.model.findByIdAndUpdate(
+      const result = await this.model.findByIdAndUpdate(
         id,
         { ...updateOrderDto, totalAmount },
-        {
-          new: true,
-          runValidators: true,
-        },
+        { new: true, runValidators: true },
       );
-
       return this.response.item(
         200,
         'SUCCESS',
         'Cập nhật đơn hàng thành công',
-        reuslt,
+        result,
         OrderTransformer,
       );
     } catch (error) {
       return this.response.base(
         500,
         'ERROR',
-        'Lỗi hệ thống: Không thể cập nhật đơn hàng',
+        error.message || 'Lỗi hệ thống: Không thể cập nhật đơn hàng',
       );
     }
   }
@@ -289,7 +255,7 @@ export class OrderService {
       }
       const deleted = await this.model.findByIdAndDelete(id).exec();
       if (!deleted) {
-        this.response.base(
+        return this.response.base(
           404,
           'ERROR',
           `Lỗi: Không tìm thấy đơn hàng với id là ${id}`,
