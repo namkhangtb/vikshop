@@ -4,11 +4,13 @@ import { ProductService } from './product.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Product, ProductSchema } from './product.schema';
 import { CommonModule } from '../common/common.module';
+import { CounterModule } from '../counter/counter.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
     CommonModule,
+    CounterModule,
   ],
   controllers: [ProductController],
   providers: [ProductService],

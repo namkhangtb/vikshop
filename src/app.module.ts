@@ -6,6 +6,7 @@ import { OrderModule } from './modules/order/order.module';
 import { ProductModule } from './modules/product/product.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CounterModule } from './modules/counter/counter.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     OrderModule,
     ProductModule,
     UploadModule,
+    CounterModule,
   ],
   controllers: [AppController],
   providers: [AppService],

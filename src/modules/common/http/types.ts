@@ -1,24 +1,23 @@
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString } from 'class-validator';
 
-export type ApiItemResponse<T> = {
+export type ApiBaseResponse<T, M = undefined> = {
+  status: number;
+  statusText: string;
+  message: string;
   data: T;
+  meta?: M;
 };
+export type ApiItemResponse<T> = ApiBaseResponse<T>;
 
-export type ApiCollectionResponse<T> = {
-  data: T[];
-};
+export type ApiCollectionResponse<T> = ApiBaseResponse<T[]>;
 
-export type ApiPaginateResponse<T> = {
-  data: T[];
-  meta: {
+export type ApiPaginateResponse<T> = ApiBaseResponse<
+  T[],
+  {
     pagination: IPaginationMeta;
-  };
-};
-
-export type ApiSuccessResponse = {
-  data: { success: boolean };
-};
+  }
+>;
 
 export interface IPaginationMeta {
   /**

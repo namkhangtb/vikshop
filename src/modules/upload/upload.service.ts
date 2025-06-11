@@ -29,24 +29,53 @@ export class UploadService {
   @Cron('0 0 * * *')
   async handleImageCleanup() {
     try {
-      const products = await this.productService.findAll({
-        limit: -1,
-      });
-
       const usedImages = new Set<string>();
-      const productArray = Array.isArray(products.data)
-        ? products.data
-        : [products.data];
-      for (const product of productArray) {
-        if (Array.isArray(product.images)) {
-          product.images.forEach((img) => usedImages.add(img));
+      let page = 1;
+      const limit = 10000;
+      let totalPages = 1;
+      do {
+        const productsRes = await this.productService.findMany({
+          limit,
+          page,
+        });
+
+        if (!productsRes || !productsRes.data) {
+          break;
         }
+
+        const productArray = Array.isArray(productsRes.data)
+          ? productsRes.data
+          : [productsRes.data];
+
+        for (const product of productArray) {
+          const typedProduct = product as { images?: string[] };
+          if (Array.isArray(typedProduct.images)) {
+            typedProduct.images.forEach((img) => usedImages.add(img));
+          }
+        }
+
+        if (productsRes.meta && productsRes.meta.pagination.totalPages) {
+          totalPages = productsRes.meta.pagination.totalPages;
+        }
+
+        page++;
+      } while (page <= totalPages);
+
+      const uploadsDir = './uploads';
+      if (!fs.existsSync(uploadsDir)) {
+        console.log('Thư mục uploads không tồn tại.');
+        return;
       }
 
-      const allFiles = fs.readdirSync('./uploads');
+      const allFiles = fs.readdirSync(uploadsDir);
       const trashFiles = allFiles.filter((file) => !usedImages.has(file));
+      if (trashFiles.length === 0) {
+        console.log('Không có ảnh rác để dọn dẹp.');
+        return;
+      }
+
       trashFiles.forEach((file) => {
-        const filePath = path.join('./uploads', file);
+        const filePath = path.join(uploadsDir, file);
         try {
           fs.unlinkSync(filePath);
           console.log(`Đã xoá ảnh rác: ${file}`);

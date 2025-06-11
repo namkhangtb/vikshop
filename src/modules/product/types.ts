@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -5,39 +6,52 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Min,
 } from 'class-validator';
 
 export class UpdateProductDto {
   @IsOptional()
   @IsString()
-  productId?: string;
+  productCode?: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Tên sản phẩm không được để trống' })
   name: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   retailPrice?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   importPrice?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   wholesalePrice?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   livestreamPrice?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   marketPrice?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   upsalePrice?: number;
 
   @IsOptional()
@@ -45,7 +59,9 @@ export class UpdateProductDto {
   barcode?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   weight?: number;
 
   @IsOptional()
@@ -55,10 +71,13 @@ export class UpdateProductDto {
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(9)
+  @Type(() => String)
   images?: string[];
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   stock?: number;
 }
 

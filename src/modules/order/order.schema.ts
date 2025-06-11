@@ -1,9 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { ProductItem } from './types';
 
 export type OrderDocument = HydratedDocument<Order>;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Order {
   @Prop()
   name: string;
@@ -14,28 +15,11 @@ export class Order {
   @Prop()
   email: string;
 
-  @Prop({
-    type: [
-      {
-        productId: { type: String, required: true },
-        count: { type: Number, required: true },
-      },
-    ],
-    required: true,
-  })
-  products: {
-    productId: string;
-    count: number;
-  }[];
+  @Prop({ type: [{ productId: String, count: Number }], required: true })
+  products: ProductItem[];
 
   @Prop()
   totalAmount: number;
-
-  @Prop({ required: true })
-  createdAt: Date;
-
-  @Prop()
-  updatedAt: Date;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

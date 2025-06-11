@@ -16,30 +16,30 @@ import { FindManyQueryParam } from '../common/http/types';
 export class OrderController {
   constructor(private readonly service: OrderService) {}
   @Get()
-  async index(@Query() param: FindManyQueryParam) {
-    return await this.service.findAll(param);
+  async findMany(@Query() param: FindManyQueryParam) {
+    return await this.service.findMany(param);
   }
 
   @Get(':id')
-  async find(@Param('id') id: string) {
+  async findOne(@Param('id') id: string) {
     return await this.service.findOne(id);
   }
 
   @Post()
-  async create(@Body() createOrderDto: CreateOrderDto) {
-    return await this.service.create(createOrderDto);
+  async createOne(@Body() createOrderDto: CreateOrderDto) {
+    return await this.service.createOne(createOrderDto);
   }
 
   @Put(':id')
-  async update(
+  async updateOne(
     @Param('id') id: string,
     @Body() updateOrderDto: UpdateOrderDto,
   ) {
-    return await this.service.update(id, updateOrderDto);
+    return await this.service.updateOne(id, updateOrderDto);
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    return await this.service.delete(id);
+  async deleteOne(@Param('id') id: string) {
+    return await this.service.deleteOne(id);
   }
 }

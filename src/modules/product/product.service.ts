@@ -1,117 +1,254 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from './product.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+
+import { ApiResponseService, FindManyQueryParam } from '../common';
+import { ProductTransformer } from './product.transformer';
 import { CreateProductDto, UpdateProductDto } from './types';
-import {
-  ApiCollectionResponse,
-  ApiItemResponse,
-  ApiPaginateResponse,
-  FindManyQueryParam,
-} from '../common/http/types';
-import { ApiResponseService, BaseService } from '../common';
+import { CounterService } from '../counter/counter.service';
 
 @Injectable()
-export class ProductService extends BaseService<Product> {
+export class ProductService {
   constructor(
-    @InjectModel(Product.name) model: Model<ProductDocument>,
-    response: ApiResponseService,
-  ) {
-    super(model, response);
-  }
+    @InjectModel(Product.name) private readonly model: Model<ProductDocument>,
+    private response: ApiResponseService,
+    private counterService: CounterService,
+  ) {}
 
-  async findAll(
-    param: FindManyQueryParam,
-  ): Promise<
-    | ApiCollectionResponse<Product>
-    | ApiItemResponse<Product>
-    | ApiPaginateResponse<Product>
-  > {
-    const page = Number(param.page) ?? 1;
-    const limit = Number(param.limit) ?? 10;
+  async findMany(param: FindManyQueryParam) {
+    try {
+      const filter: any = {};
+      const projection: any = {};
+      let sort: any = { createdAt: -1 };
 
-    const filter: any = {};
-    const projection: any = {};
-    let sort: any = { createdAt: -1 };
-    if (param.keyword) {
-      filter.$text = { $search: param.keyword };
-      projection.score = { $meta: 'textScore' };
-      sort = { score: { $meta: 'textScore' }, createAt: -1 };
-    }
-    const query = this.model.find(filter, projection).sort(sort);
-    if (limit < 0) {
-      const result = await query.exec();
-      return this.response.collection(result);
-    } else if (limit === 1) {
-      const result = await query.limit(1).exec();
-      return this.response.item(result);
-    } else {
-      const result = await this.pagination(query, filter, { page, limit });
-      return this.response.pagination(result);
-    }
-  }
+      if (param.keyword) {
+        filter.$text = { $search: param.keyword };
+        projection.score = { $meta: 'textScore' };
+        sort = { score: { $meta: 'textScore' }, createAt: -1 };
+      }
 
-  async findOne(id: string): Promise<Product> {
-    return await this.model.findById(id).exec();
-  }
+      const totalItems = await this.model.countDocuments(filter).exec();
+      if (totalItems <= 0) {
+        this.response.base(404, 'ERROR', 'Không có sản phẩm!!!');
+      }
 
-  async create(createProductDto: CreateProductDto): Promise<Product> {
-    if (createProductDto.productId) {
-      const existing = await this.model.findOne({
-        productId: createProductDto.productId,
-      });
-      if (existing) {
-        throw new BadRequestException(
-          `Mã sản phẩm "${createProductDto.productId}" đã tồn tại.`,
+      if (param.limit <= 0) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: truyền sai dữ liệu limit.',
         );
       }
-    } else {
-      createProductDto.productId = await this.generateNextCode();
-    }
+      if (param.page <= 0) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: truyền sai dữ liệu page.',
+        );
+      }
 
-    return await new this.model({
-      ...createProductDto,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).save();
+      const page = Number(param.page) ? Number(param.page) : 1;
+      const limit = Number(param.limit) ? Number(param.limit) : 10;
+      const skip = (page - 1) * limit;
+
+      const totalPages = Math.ceil(totalItems / limit);
+      if (totalPages > 0 && page > totalPages) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: số trang (page) vượt quá tổng số trang hiện có.',
+        );
+      }
+      const data = await this.model
+        .find(filter, projection)
+        .skip(skip)
+        .limit(limit)
+        .sort(sort)
+        .exec();
+
+      const itemCount = data.length;
+
+      return this.response.pagination(
+        200,
+        'SUCCESS',
+        'Lấy dang sách sản phẩm thành công!!!',
+        {
+          data,
+          meta: {
+            itemCount,
+            totalItems,
+            itemsPerPage: limit,
+            totalPages,
+            currentPage: page,
+          },
+        },
+        ProductTransformer,
+      );
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống: Không thể láy dữ liệu các sản phẩm',
+      );
+    }
   }
 
-  async update(
-    id: string,
-    updateProductDto: UpdateProductDto,
-  ): Promise<Product> {
-    return await this.model
-      .findByIdAndUpdate(
+  async findOne(id: string) {
+    if (!id || !Types.ObjectId.isValid(id)) {
+      return this.response.base(
+        400,
+        'ERROR',
+        'Lỗi: ID sản phẩm không hợp lệ hoặc không được cung cấp',
+      );
+    }
+    const result = await this.model.findById(id).exec();
+    if (!result) {
+      return this.response.base(
+        404,
+        'ERROR',
+        `Lỗi: Không tìm thấy sản phẩm với id là ${id}`,
+      );
+    }
+    return this.response.item(
+      200,
+      'SUCCESS',
+      'Lấy dữ liệu sản phẩm thành công',
+      result,
+      ProductTransformer,
+    );
+  }
+
+  async createOne(createProductDto: CreateProductDto) {
+    try {
+      let productCode = createProductDto.productCode;
+      if (productCode) {
+        const existing = await this.model.findOne({
+          productCode: productCode,
+        });
+        if (existing) {
+          return this.response.base(
+            400,
+            'ERROR',
+            `Mã sản phẩm ${productCode} đã tồn tại`,
+          );
+        }
+      } else {
+        const nextSeq = await this.counterService.getNextSequence('product');
+        productCode = `SP${nextSeq}`;
+      }
+
+      const result = await new this.model({
+        ...createProductDto,
+        productCode,
+      }).save();
+
+      return this.response.item(
+        201,
+        'SUCCESS',
+        'Thêm đơn hàng thành công!!!',
+        result,
+        ProductTransformer,
+      );
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống: Không thể tạo sản phẩm',
+      );
+    }
+  }
+
+  async updateOne(id: string, updateProductDto: UpdateProductDto) {
+    try {
+      if (!id || !Types.ObjectId.isValid(id)) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: ID không hợp lệ hoặc không được cung cấp',
+        );
+      }
+
+      const existingProduct = await this.model.findById(id);
+      if (!existingProduct) {
+        return this.response.base(
+          400,
+          'ERROR',
+          `Lỗi: Không tìm thấy sản phẩm với id là ${id}`,
+        );
+      }
+
+      let productCode = updateProductDto.productCode;
+      if (productCode) {
+        const product = await this.model.findById(id);
+        if (product.productCode === productCode) {
+          return this.response.base(
+            400,
+            'ERROR',
+            `Mã sản phẩm ${productCode} đã tồn tại`,
+          );
+        }
+      } else {
+        const nextSeq = await this.counterService.getNextSequence('product');
+        productCode = `SP${nextSeq}`;
+      }
+
+      const result = await this.model.findByIdAndUpdate(
         id,
         {
           ...updateProductDto,
-          updatedAt: new Date(),
+          productCode,
         },
-        { new: true },
-      )
-      .exec();
-  }
+        {
+          new: true,
+          runValidators: true,
+        },
+      );
 
-  async delete(id: string): Promise<Product> {
-    return await this.model.findByIdAndDelete(id).exec();
-  }
-
-  private async generateNextCode(): Promise<string> {
-    const products = await this.model.find({ productId: /^SP\d+$/ }).exec();
-
-    let maxNumber = 0;
-    for (const product of products) {
-      const match = product.productId.match(/^SP(\d+)$/);
-
-      if (match) {
-        const number = parseInt(match[1], 10);
-        if (number > maxNumber) {
-          maxNumber = number;
-        }
-      }
+      return this.response.item(
+        200,
+        'SUCCESS',
+        'Sửa đơn hàng thành công!!!',
+        result,
+        ProductTransformer,
+      );
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống: Không thể cập nhật sản phẩm',
+      );
     }
-    const nextNumber = maxNumber + 1;
-    const nextProductId = 'SP' + nextNumber;
-    return nextProductId;
+  }
+
+  async deleteOne(id: string) {
+    try {
+      if (!id || !Types.ObjectId.isValid(id)) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: ID không hợp lệ hoặc không được cung cấp',
+        );
+      }
+      const deleted = await this.model.findByIdAndDelete(id).exec();
+      if (!deleted) {
+        this.response.base(
+          404,
+          'ERROR',
+          `Lỗi: Không tìm thấy sản phẩm với id là ${id}`,
+        );
+      }
+      return this.response.base(
+        200,
+        'SUCCESS',
+        'Xóa dữ liệu sản phẩm thành công',
+      );
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống: Không thể xóa sản phẩm',
+      );
+    }
   }
 }

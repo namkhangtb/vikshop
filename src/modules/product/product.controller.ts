@@ -17,30 +17,30 @@ export class ProductController {
   constructor(private readonly service: ProductService) {}
 
   @Get()
-  async index(@Query() param: FindManyQueryParam) {
-    return await this.service.findAll(param);
+  async findMany(@Query() param: FindManyQueryParam) {
+    return await this.service.findMany(param);
   }
 
   @Get(':id')
-  async find(@Param('id') id: string) {
+  async findOne(@Param('id') id: string) {
     return await this.service.findOne(id);
   }
 
   @Post()
-  async create(@Body() createProductDto: CreateProductDto) {
-    return await this.service.create(createProductDto);
+  async createOne(@Body() createProductDto: CreateProductDto) {
+    return await this.service.createOne(createProductDto);
   }
 
   @Put(':id')
-  async update(
+  async updateOne(
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
   ) {
-    return await this.service.update(id, updateProductDto);
+    return await this.service.updateOne(id, updateProductDto);
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string) {
-    return await this.service.delete(id);
+  async deleteOne(@Param('id') id: string) {
+    return await this.service.deleteOne(id);
   }
 }

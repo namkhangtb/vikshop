@@ -1,82 +1,311 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from './order.schema';
-import { Model } from 'mongoose';
-import { CreateOrderDto, UpdateOrderDto } from './types';
-import {
-  ApiCollectionResponse,
-  ApiItemResponse,
-  ApiPaginateResponse,
-  FindManyQueryParam,
-} from '../common/http/types';
-import { ApiResponseService, BaseService } from '../common';
+import { Model, Types } from 'mongoose';
+import { CreateOrderDto, ProductItem, UpdateOrderDto } from './types';
+import { FindManyQueryParam } from '../common/http/types';
+import { ApiResponseService } from '../common';
+import { ProductService } from '../product/product.service';
+import { OrderTransformer } from './order.transformer';
 
 @Injectable()
-export class OrderService extends BaseService<Order> {
+export class OrderService {
   constructor(
-    @InjectModel(Order.name) model: Model<OrderDocument>,
-    response: ApiResponseService,
-  ) {
-    super(model, response);
-  }
+    @InjectModel(Order.name) private readonly model: Model<OrderDocument>,
+    private response: ApiResponseService,
+    private productService: ProductService,
+  ) {}
 
-  async findAll(
-    param: FindManyQueryParam,
-  ): Promise<
-    | ApiCollectionResponse<Order>
-    | ApiItemResponse<Order>
-    | ApiPaginateResponse<Order>
-  > {
-    const page = Number(param.page) ?? 1;
-    const limit = Number(param.limit) ?? 10;
+  async findMany(param: FindManyQueryParam) {
+    try {
+      const filter: any = {};
+      const projection: any = {};
+      let sort: any = { createdAt: -1 };
 
-    const filter: any = {};
-    const projection: any = {};
-    let sort: any = { createdAt: -1 };
-    if (param.keyword) {
-      filter.$text = { $search: param.keyword };
-      projection.score = { $meta: 'textScore' };
-      sort = { score: { $meta: 'textScore' }, createAt: -1 };
-    }
-    const query = this.model.find(filter, projection).sort(sort);
-    if (limit < 0) {
-      const result = await query.exec();
-      return this.response.collection(result);
-    } else if (limit === 1) {
-      const result = await query.limit(1).exec();
-      return this.response.item(result);
-    } else {
-      const result = await this.pagination(query, filter, { page, limit });
-      return this.response.pagination(result);
-    }
-  }
+      if (param.keyword) {
+        filter.$text = { $search: param.keyword };
+        projection.score = { $meta: 'textScore' };
+        sort = { score: { $meta: 'textScore' }, createAt: -1 };
+      }
 
-  async findOne(id: string): Promise<Order> {
-    return await this.model.findById(id).exec();
-  }
+      const totalItems = await this.model.countDocuments(filter).exec();
+      if (totalItems <= 0) {
+        this.response.base(404, 'ERROR', 'Không có đơn hàng!!!');
+      }
 
-  async create(createOrderDto: CreateOrderDto): Promise<Order> {
-    return await new this.model({
-      ...createOrderDto,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).save();
-  }
+      if (param.limit <= 0) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: truyền sai dữ liệu limit.',
+        );
+      }
+      if (param.page <= 0) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: truyền sai dữ liệu page.',
+        );
+      }
 
-  async update(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
-    return await this.model
-      .findByIdAndUpdate(
-        id,
+      const page = Number(param.page) ? Number(param.page) : 1;
+      const limit = Number(param.limit) ? Number(param.limit) : 10;
+      const skip = (page - 1) * limit;
+
+      const totalPages = Math.ceil(totalItems / limit);
+      if (totalPages > 0 && page > totalPages) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: số trang (page) vượt quá tổng số trang hiện có.',
+        );
+      }
+      const data = await this.model
+        .find(filter, projection)
+        .skip(skip)
+        .limit(limit)
+        .sort(sort)
+        .exec();
+
+      const itemCount = data.length;
+
+      return this.response.pagination(
+        200,
+        'SUCCESS',
+        'Lấy dang sách đơn hàng thành công!!!',
         {
-          ...updateOrderDto,
-          updatedAt: new Date(),
+          data,
+          meta: {
+            itemCount,
+            totalItems,
+            itemsPerPage: limit,
+            totalPages,
+            currentPage: page,
+          },
         },
-        { new: true },
-      )
-      .exec();
+        OrderTransformer,
+      );
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống: Không thể láy dữ liệu các đơn hàng',
+      );
+    }
   }
 
-  async delete(id: string): Promise<Order> {
-    return await this.model.findByIdAndDelete(id).exec();
+  async findOne(id: string) {
+    try {
+      if (!id || !Types.ObjectId.isValid(id)) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: ID không hợp lệ hoặc không được cung cấp',
+        );
+      }
+      const result = await this.model.findById(id).exec();
+      if (!result) {
+        this.response.base(
+          404,
+          'ERROR',
+          `Lỗi: Không tìm thấy đơn hàng với id là ${id}`,
+        );
+      }
+      return this.response.item(
+        200,
+        'SUCCESS',
+        'Lấy dữ liệu đơn hàng thành công',
+        result,
+        OrderTransformer,
+      );
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống: Không thể láy dữ liệu đơn hàng',
+      );
+    }
+  }
+
+  async createOne(createOrderDto: CreateOrderDto) {
+    try {
+      if (!createOrderDto.products || createOrderDto.products.length < 1) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: Đơn hàng phải có ít nhất 1 sản phẩm',
+        );
+      }
+
+      const totalAmount = await this.calculateTotalAmount(
+        createOrderDto.products,
+      );
+
+      if (typeof totalAmount === 'object' && totalAmount) {
+        return totalAmount;
+      }
+
+      const result = await new this.model({
+        ...createOrderDto,
+        totalAmount,
+      }).save();
+
+      return this.response.item(
+        201,
+        'SUCCESS',
+        'Thêm đơn hàng thành công!!!',
+        result,
+        OrderTransformer,
+      );
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống: Không thể tạo đơn hàng',
+      );
+    }
+  }
+
+  private async calculateTotalAmount(products: ProductItem[]) {
+    try {
+      for (const item of products) {
+        const { productId, count } = item;
+
+        if (!productId || !Types.ObjectId.isValid(productId)) {
+          return this.response.base(
+            400,
+            'ERROR',
+            `Lỗi: ID sản phẩm không hợp lệ hoặc không được cung cấp ${productId}`,
+          );
+        }
+
+        if (!count || count <= 0) {
+          return this.response.base(
+            400,
+            'ERROR',
+            `Lỗi: Số lượng sản phẩm tối thiểu phải là 1`,
+          );
+        }
+      }
+
+      const productResults = await Promise.all(
+        products.map((item) => this.productService.findOne(item.productId)),
+      );
+
+      let total = 0;
+
+      for (let i = 0; i < productResults.length; i++) {
+        const { data } = productResults[i];
+
+        if (!data?.retailPrice) {
+          return this.response.base(
+            400,
+            'ERROR',
+            `Lỗi: Không tìm thấy thông tin giá bán sản phẩm với ID: ${products[i].productId}`,
+          );
+        }
+
+        total += data.retailPrice * products[i].count;
+      }
+
+      return total;
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống khi tính tổng giá trị đơn hàng',
+      );
+    }
+  }
+
+  async updateOne(id: string, updateOrderDto: UpdateOrderDto) {
+    try {
+      if (!id || !Types.ObjectId.isValid(id)) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: ID không hợp lệ hoặc không được cung cấp',
+        );
+      }
+
+      const existingOrder = await this.model.findById(id);
+      if (!existingOrder) {
+        return this.response.base(
+          400,
+          'ERROR',
+          `Lỗi: Không tìm thấy đơn hàng với id là ${id}`,
+        );
+      }
+
+      if (!updateOrderDto.products || updateOrderDto.products.length < 1) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: Đơn hàng phải có ít nhất 1 sản phẩm',
+        );
+      }
+
+      const totalAmount = await this.calculateTotalAmount(
+        updateOrderDto.products,
+      );
+
+      if (typeof totalAmount === 'object' && totalAmount) {
+        return totalAmount;
+      }
+
+      const reuslt = await this.model.findByIdAndUpdate(
+        id,
+        { ...updateOrderDto, totalAmount },
+        {
+          new: true,
+          runValidators: true,
+        },
+      );
+
+      return this.response.item(
+        200,
+        'SUCCESS',
+        'Cập nhật đơn hàng thành công',
+        reuslt,
+        OrderTransformer,
+      );
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống: Không thể cập nhật đơn hàng',
+      );
+    }
+  }
+
+  async deleteOne(id: string) {
+    try {
+      if (!id || !Types.ObjectId.isValid(id)) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: ID không hợp lệ hoặc không được cung cấp',
+        );
+      }
+      const deleted = await this.model.findByIdAndDelete(id).exec();
+      if (!deleted) {
+        this.response.base(
+          404,
+          'ERROR',
+          `Lỗi: Không tìm thấy đơn hàng với id là ${id}`,
+        );
+      }
+      return this.response.base(
+        200,
+        'SUCCESS',
+        'Xóa dữ liệu đơn hàng thành công',
+      );
+    } catch (error) {
+      return this.response.base(
+        500,
+        'ERROR',
+        'Lỗi hệ thống: Không thể xóa đơn hàng',
+      );
+    }
   }
 }

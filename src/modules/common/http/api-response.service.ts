@@ -1,28 +1,69 @@
 import { Injectable } from '@nestjs/common';
 import {
+  ApiBaseResponse,
   ApiCollectionResponse,
   ApiItemResponse,
   ApiPaginateResponse,
-  ApiSuccessResponse,
 } from './types';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class ApiResponseService {
-  item<T>(item: T): ApiItemResponse<T> {
-    return { data: item };
+  base(
+    status: number,
+    statusText: string,
+    message: string,
+  ): ApiBaseResponse<null> {
+    return { status, statusText, message, data: null };
   }
 
-  collection<T>(collection: T[]): ApiCollectionResponse<T> {
-    return { data: collection };
-  }
-
-  success(): ApiSuccessResponse {
-    return { data: { success: true } };
-  }
-
-  pagination<T>(pagination): ApiPaginateResponse<T> {
+  item<T>(
+    status: number,
+    statusText: string,
+    message: string,
+    data: T,
+    transformer,
+  ): ApiItemResponse<T> {
     return {
-      data: pagination.data,
+      status,
+      statusText,
+      message,
+      data: plainToInstance(transformer, data, {
+        excludeExtraneousValues: true,
+      }),
+    };
+  }
+
+  collection<T>(
+    status: number,
+    statusText: string,
+    message: string,
+    data,
+    transformer,
+  ): ApiCollectionResponse<T> {
+    const items = data.map((i) =>
+      plainToInstance(transformer, i, {
+        excludeExtraneousValues: true,
+      }),
+    );
+    return { status, statusText, message, data: items };
+  }
+
+  pagination<T>(
+    status,
+    statusText,
+    message,
+    pagination,
+    transformer,
+  ): ApiPaginateResponse<T> {
+    const items = pagination.data.map((item) =>
+      plainToInstance(transformer, item, { excludeExtraneousValues: true }),
+    );
+    return {
+      status,
+      statusText,
+      message,
+      data: items,
       meta: {
         pagination: {
           itemCount: pagination.meta.itemCount,
