@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from './product.schema';
 import { Model, Types } from 'mongoose';
+import { Order, OrderDocument } from '../order/order.schema';
 
 import { ApiResponseService, FindManyQueryParam } from '../common';
 import { ProductTransformer } from './product.transformer';
@@ -12,6 +13,7 @@ import { CounterService } from '../counter/counter.service';
 export class ProductService {
   constructor(
     @InjectModel(Product.name) private readonly model: Model<ProductDocument>,
+    @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     private response: ApiResponseService,
     private counterService: CounterService,
   ) {}
@@ -132,8 +134,12 @@ export class ProductService {
           );
         }
       } else {
-        const nextSeq = await this.counterService.getNextSequence('product');
+        let nextSeq = await this.counterService.getNextSequence('product');
         productCode = `SP${nextSeq}`;
+        while (await this.model.findOne({ productCode })) {
+          nextSeq = await this.counterService.getNextSequence('product');
+          productCode = `SP${nextSeq}`;
+        }
       }
 
       const result = await new this.model({
@@ -225,14 +231,31 @@ export class ProductService {
           'Lỗi: ID không hợp lệ hoặc không được cung cấp',
         );
       }
-      const deleted = await this.model.findByIdAndDelete(id).exec();
-      if (!deleted) {
+
+      const product = await this.model.findById(id).exec();
+      if (!product) {
         return this.response.base(
           404,
           'ERROR',
           `Lỗi: Không tìm thấy sản phẩm với id là ${id}`,
         );
       }
+
+      const orderUsingProduct = await this.orderModel
+        .findOne({
+          'products.productId': id,
+        })
+        .exec();
+
+      if (orderUsingProduct) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Không thể xóa sản phẩm này vì đang được sử dụng trong đơn hàng',
+        );
+      }
+
+      await this.model.findByIdAndDelete(id).exec();
       return this.response.base(
         200,
         'SUCCESS',

@@ -201,11 +201,6 @@ export class OrderService {
       let total = 0;
       for (let i = 0; i < productResults.length; i++) {
         const { data } = productResults[i];
-        if (!data?.retailPrice) {
-          throw new Error(
-            `Lỗi: Không tìm thấy thông tin giá bán sản phẩm với ID: ${products[i].productId}`,
-          );
-        }
         total += data.retailPrice * products[i].count;
       }
       return total;
