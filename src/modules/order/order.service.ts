@@ -62,6 +62,7 @@ export class OrderService {
       }
       const data = await this.model
         .find(filter, projection)
+        .populate('products.productId')
         .skip(skip)
         .limit(limit)
         .sort(sort)
@@ -103,7 +104,10 @@ export class OrderService {
           'Lỗi: ID không hợp lệ hoặc không được cung cấp',
         );
       }
-      const result = await this.model.findById(id).exec();
+      const result = await this.model
+        .findById(id)
+        .populate('products.productId')
+        .exec();
       if (!result) {
         return this.response.base(
           404,
@@ -140,17 +144,33 @@ export class OrderService {
       const totalAmount = await this.calculateTotalAmount(
         createOrderDto.products,
       );
+      if (totalAmount !== createOrderDto.totalAmount) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: Dữ liệu totalAmout truyền vào không trùng khớp với giá trị tính toán được',
+        );
+      }
 
       const result = await new this.model({
         ...createOrderDto,
         totalAmount,
       }).save();
 
+      const populatedResult = await result.populate('products.productId');
+      const plainResult = {
+        ...populatedResult.toObject(),
+        products: populatedResult.products.map((item) => ({
+          productId:
+            item.productId?._id?.toString() || item.productId?.toString(),
+          count: item.count,
+        })),
+      };
       return this.response.item(
         201,
         'SUCCESS',
         'Thêm đơn hàng thành công!!!',
-        result,
+        plainResult,
         OrderTransformer,
       );
     } catch (error) {
@@ -205,6 +225,7 @@ export class OrderService {
           'Lỗi: ID không hợp lệ hoặc không được cung cấp',
         );
       }
+
       const existingOrder = await this.model.findById(id);
       if (!existingOrder) {
         return this.response.base(
@@ -213,6 +234,7 @@ export class OrderService {
           `Lỗi: Không tìm thấy đơn hàng với id là ${id}`,
         );
       }
+
       if (!updateOrderDto.products || updateOrderDto.products.length < 1) {
         return this.response.base(
           400,
@@ -220,19 +242,39 @@ export class OrderService {
           'Lỗi: Đơn hàng phải có ít nhất 1 sản phẩm',
         );
       }
+
       const totalAmount = await this.calculateTotalAmount(
         updateOrderDto.products,
       );
+      if (totalAmount !== updateOrderDto.totalAmount) {
+        return this.response.base(
+          400,
+          'ERROR',
+          'Lỗi: Dữ liệu totalAmout truyền vào không trùng khớp với giá trị tính toán được',
+        );
+      }
+
       const result = await this.model.findByIdAndUpdate(
         id,
         { ...updateOrderDto, totalAmount },
-        { new: true, runValidators: true },
+        { new: true },
       );
+
+      const populatedResult = await result.populate('products.productId');
+      const plainResult = {
+        ...populatedResult.toObject(),
+        products: populatedResult.products.map((item) => ({
+          productId:
+            item.productId?._id?.toString() || item.productId?.toString(),
+          count: item.count,
+        })),
+      };
+
       return this.response.item(
         200,
         'SUCCESS',
         'Cập nhật đơn hàng thành công',
-        result,
+        plainResult,
         OrderTransformer,
       );
     } catch (error) {

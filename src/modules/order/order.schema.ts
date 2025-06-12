@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
-import { ProductItem } from './types';
+import mongoose, { HydratedDocument, Types } from 'mongoose';
 
 export type OrderDocument = HydratedDocument<Order>;
 
@@ -15,8 +14,16 @@ export class Order {
   @Prop()
   email: string;
 
-  @Prop({ type: [{ productId: String, count: Number }], required: true })
-  products: ProductItem[];
+  @Prop([
+    {
+      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+      count: { type: Number },
+    },
+  ])
+  products: {
+    productId: Types.ObjectId;
+    count: number;
+  }[];
 
   @Prop()
   totalAmount: number;

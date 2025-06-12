@@ -1,7 +1,9 @@
 import { Expose, Transform, Type } from 'class-transformer';
+import { ProductTransformer } from '../product/product.transformer';
 export class ProductItemTransformer {
   @Expose()
-  productId: string;
+  @Type(() => ProductTransformer)
+  productId: ProductTransformer;
 
   @Expose()
   count: number;

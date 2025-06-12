@@ -18,7 +18,7 @@ export class ProductItem {
 
   @IsNumber()
   @IsNotEmpty()
-  @Min(1)
+  @Min(1, { message: 'Số lượng sản phẩm tối thiểu là 1' })
   count: number;
 }
 
@@ -29,7 +29,9 @@ export class UpdateOrderDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^0\d{9}$/, { message: 'Số điện thoại không hợp lệ (10 số)' })
+  @Matches(/^0\d{9}$/, {
+    message: 'Số điện thoại không hợp lệ (10 số và bắt đầu số 0)',
+  })
   phoneNumber?: string;
 
   @IsOptional()
@@ -40,7 +42,7 @@ export class UpdateOrderDto {
   @IsNotEmpty()
   @IsArray()
   @Type(() => ProductItem)
-  @ArrayMinSize(1)
+  @ArrayMinSize(1, { message: 'Đơn hàng phải có tối thiểu 1 sản phẩm' })
   products: ProductItem[];
 
   @IsOptional()

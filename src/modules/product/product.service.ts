@@ -197,10 +197,7 @@ export class ProductService {
           ...updateProductDto,
           productCode,
         },
-        {
-          new: true,
-          runValidators: true,
-        },
+        { new: true },
       );
 
       return this.response.item(
