@@ -192,8 +192,12 @@ export class ProductService {
           );
         }
       } else if (!productCode) {
-        const nextSeq = await this.counterService.getNextSequence('product');
+        let nextSeq = await this.counterService.getNextSequence('product');
         productCode = `SP${nextSeq}`;
+        while (await this.model.findOne({ productCode })) {
+          nextSeq = await this.counterService.getNextSequence('product');
+          productCode = `SP${nextSeq}`;
+        }
       }
 
       const result = await this.model.findByIdAndUpdate(
