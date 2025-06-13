@@ -4,7 +4,7 @@ import { OrderController } from './order.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Order, OrderSchema } from './order.schema';
 import { ProductModule } from '../product/product.module';
-import { CommonModule } from '../common/common.module';
+import { CommonModule } from '../../common/common.module';
 
 @Module({
   imports: [

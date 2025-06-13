@@ -4,7 +4,7 @@ import { ProductService } from './product.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Product, ProductSchema } from './product.schema';
 import { Order, OrderSchema } from '../order/order.schema';
-import { CommonModule } from '../common/common.module';
+import { CommonModule } from '@common/common.module';
 import { CounterModule } from '../counter/counter.module';
 
 @Module({

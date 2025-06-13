@@ -3,10 +3,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Order, OrderDocument } from './order.schema';
 import { Model, Types } from 'mongoose';
 import { CreateOrderDto, ProductItem, UpdateOrderDto } from './types';
-import { FindManyQueryParam } from '../common/http/types';
-import { ApiResponseService } from '../common';
 import { ProductService } from '../product/product.service';
 import { OrderTransformer } from './order.transformer';
+import { ApiResponseService, FindManyQueryParam } from '@common/http';
 
 @Injectable()
 export class OrderService {

@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto, UpdateOrderDto } from './types';
-import { FindManyQueryParam } from '../common/http/types';
+import { FindManyQueryParam } from '@common/http';
 
 @Controller('order')
 export class OrderController {

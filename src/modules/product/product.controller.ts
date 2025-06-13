@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from './types';
-import { FindManyQueryParam } from '../common/http/types';
+import { FindManyQueryParam } from '@common/http';
 
 @Controller('product')
 export class ProductController {

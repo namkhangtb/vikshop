@@ -3,8 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from './product.schema';
 import { Model, Types } from 'mongoose';
 import { Order, OrderDocument } from '../order/order.schema';
-
-import { ApiResponseService, FindManyQueryParam } from '../common';
+import { ApiResponseService, FindManyQueryParam } from '@common/http';
 import { ProductTransformer } from './product.transformer';
 import { CreateProductDto, UpdateProductDto } from './types';
 import { CounterService } from '../counter/counter.service';
