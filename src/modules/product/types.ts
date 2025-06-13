@@ -21,37 +21,37 @@ export class UpdateProductDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0, { message: 'Giá tiền phải lớn hơn hoặc bằng 0' })
   retailPrice?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0, { message: 'Giá tiền phải lớn hơn hoặc bằng 0' })
   importPrice?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0, { message: 'Giá tiền phải lớn hơn hoặc bằng 0' })
   wholesalePrice?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0, { message: 'Giá tiền phải lớn hơn hoặc bằng 0' })
   livestreamPrice?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0, { message: 'Giá tiền phải lớn hơn hoặc bằng 0' })
   marketPrice?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0, { message: 'Giá tiền phải lớn hơn hoặc bằng 0' })
   upsalePrice?: number;
 
   @IsOptional()
@@ -61,7 +61,7 @@ export class UpdateProductDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0, { message: 'Khối lượng phải lớn hơn hoặc bằng 0' })
   weight?: number;
 
   @IsOptional()
@@ -70,14 +70,14 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(9)
+  @ArrayMaxSize(9, { message: 'Số lượng ảnh tối đa không được vượt quá 9' })
   @Type(() => String)
   images?: string[];
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0)
+  @Min(0, { message: 'Tồn kho phải lớn hơn hoặc bằng 0' })
   stock?: number;
 }
 
