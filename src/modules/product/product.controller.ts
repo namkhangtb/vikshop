@@ -7,11 +7,13 @@ import {
   Post,
   Put,
   Query,
+  UseFilters,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from './types';
 import { FindManyQueryParam } from '@common/http';
-
+import { ApiExceptionFilter } from '@common/exception/api-exception.filter';
+@UseFilters(ApiExceptionFilter)
 @Controller('product')
 export class ProductController {
   constructor(private readonly service: ProductService) {}

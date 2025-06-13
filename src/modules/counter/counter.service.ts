@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Counter, CounterDocument } from './counter.schema';
 import { Model } from 'mongoose';
+import { ApiException } from '@common/exception/types';
 
 @Injectable()
 export class CounterService {
@@ -19,7 +20,7 @@ export class CounterService {
       .exec();
 
     if (!updated) {
-      throw new Error('Lỗi: Lỗi xảy ra khi gen productCode');
+      throw new ApiException(400, 'Lỗi: Lỗi xảy ra khi gen productCode');
     }
 
     return updated.seq;

@@ -7,11 +7,13 @@ import {
   Post,
   Put,
   Query,
+  UseFilters,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto, UpdateOrderDto } from './types';
 import { FindManyQueryParam } from '@common/http';
-
+import { ApiExceptionFilter } from '@common/exception/api-exception.filter';
+@UseFilters(ApiExceptionFilter)
 @Controller('order')
 export class OrderController {
   constructor(private readonly service: OrderService) {}
